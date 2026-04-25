@@ -255,6 +255,18 @@ function extractTickers(text: string): string[] {
 function extractTickersFromHtml(html: string): string[] {
   const mentions: string[] = [];
 
+  for (const match of html.matchAll(/<a[^>]+href=["'][^"']*\/quotes\/(?:sh|sz)(\d{6})[^"']*["'][^>]*>([\s\S]*?)<\/a>/g)) {
+    const name = normalizeMentionToken(match[2]);
+    const code = normalizeMentionToken(match[1]);
+    if (name && code) {
+      mentions.push(`${name}(${code})`);
+    } else if (name) {
+      mentions.push(name);
+    } else if (code) {
+      mentions.push(code);
+    }
+  }
+
   for (const match of html.matchAll(/name=['"]T([^'"]{2,20})['"]/g)) {
     const token = normalizeMentionToken(match[1]);
     if (token) mentions.push(token);

@@ -27,7 +27,7 @@ export function buildFallbackMessage(items: DigestSourcePost[], detailedReportUr
     ...lead,
     "出手判断：仅作观察，等待模型判断恢复后再决定是否出手。",
     `方向判断：${direction}`,
-    `关注代码：${tickers.length > 0 ? tickers.join("、") : "暂无明确高频代码"}`,
+    `观察标的：${tickers.length > 0 ? tickers.join("、") : "暂无明确高频标的"}`,
     "风险提醒：当前为规则提炼结果，不建议据此直接重仓或无脑追高。",
     `补充线索：${topTitles.join("；")}`
   ];
@@ -82,13 +82,13 @@ export function normalizeAnalysisText(text: string): string {
 
   const action = pickSection(lines, "出手判断") ?? "仅供观察，等待更明确的模型判断后再决定是否出手。";
   const direction = pickSection(lines, "方向判断") ?? fallbackDirection(lines, cleaned);
-  const watchlist = pickSection(lines, "关注代码") ?? inferWatchlistFromText(cleaned);
+  const watchlist = pickSection(lines, "观察标的") ?? pickSection(lines, "关注代码") ?? inferWatchlistFromText(cleaned);
   const risk = pickSection(lines, "风险提醒") ?? "当前输出未完整命中决策格式，不建议据此直接重仓。";
 
   return [
     `出手判断：${action}`,
     `方向判断：${direction}`,
-    `关注代码：${watchlist}`,
+    `观察标的：${watchlist}`,
     `风险提醒：${risk}`
   ].join("\n");
 }
@@ -113,7 +113,7 @@ function inferDirectionFromItems(items: DigestSourcePost[]): string {
 }
 
 function fallbackDirection(lines: string[], cleaned: string): string {
-  const firstNarrative = lines.find((line) => !/^(出手判断|方向判断|关注代码|风险提醒)[:：]/.test(line));
+  const firstNarrative = lines.find((line) => !/^(出手判断|方向判断|观察标的|关注代码|风险提醒)[:：]/.test(line));
   if (firstNarrative) {
     return truncate(firstNarrative.replace(/^总览[:：]\s*/, ""), 80);
   }
@@ -129,10 +129,10 @@ function inferDirectionFromText(text: string): string {
 }
 
 function inferWatchlistFromText(text: string): string {
-  const explicit = text.match(/关注代码[:：]\s*([^\n]+)/)?.[1]?.trim();
+  const explicit = text.match(/(?:观察标的|关注代码)[:：]\s*([^\n]+)/)?.[1]?.trim();
   if (explicit) return explicit;
   const candidates = Array.from(new Set(text.match(/\b\d{6}\b/g) ?? [])).slice(0, 8);
-  return candidates.length > 0 ? candidates.join("、") : "暂无明确高频代码";
+  return candidates.length > 0 ? candidates.join("、") : "暂无明确高频标的";
 }
 
 function limitMessage(text: string): string {

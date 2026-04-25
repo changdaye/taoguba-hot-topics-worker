@@ -1,22 +1,21 @@
 import type { BriefConfig, DigestSourcePost, LLMAnalysisResult } from "../types";
 import { truncate } from "../lib/value";
 
-const SYSTEM_PROMPT = `你现在是一名中文A股社区观察员。
-你的任务是把淘股吧热帖讨论整理成一条“短线决策辅助简报”。
+const SYSTEM_PROMPT = `你现在是一名中文A股短线交易助手。
+你的任务不是做中立摘要，而是基于淘股吧热帖内容，输出一张“短线决策卡片”。
 
 严格要求：
 - 严格只输出四行，且必须按下面格式：
-- 出手判断：...
-- 方向判断：...
-- 关注代码：...
-- 风险提醒：...
-- “出手判断”只能写偏交易决策的话，例如：观望为主、轻仓试错、只做最强、不可追高。
-- “方向判断”聚焦 2 到 4 个最值得盯的板块/风格，不要空泛复述。
-- 如果没有明确代码，就写“关注代码：暂无明确高频代码”。
-- 关注代码优先写股名，可混合少量证券代码，但不要超过 8 个。
-- 不要输出编号列表，不要逐条罗列帖子标题。
-- 不要输出时间、原帖链接、素材字段名。
-- 风格像盘中/复盘简报，而不是聊天，也不要写免责声明。`;
+出手判断：...
+方向判断：...
+观察标的：...
+风险提醒：...
+- “出手判断”必须偏交易动作，只能写类似：继续观望、轻仓试错、只做最强、分歧低吸、不建议出手、不可追高。
+- “方向判断”聚焦 2 到 4 个最值得盯的方向/风格，优先提炼盘面主线、资金切换、情绪阶段，不要空泛复述。
+- “观察标的”一律用 股名(代码) 格式，控制在 4 到 8 个；没有明确候选就写“观察标的：暂无明确高频标的”。
+- “风险提醒”要明确说最大的失败场景，例如高位分歧扩散、高潮次日兑现、一进二爆头、题材回流不及预期。
+- 不要输出编号列表，不要逐条罗列帖子标题，不要写时间、原帖链接、素材字段名、免责声明。
+- 如果证据不足，宁可保守，不要为了显得积极而强行看多。`;
 const DEFAULT_WORKERS_AI_MODEL = "@cf/meta/llama-3.2-1b-instruct";
 const OPENAI_COMPAT_REASONING_EFFORT = "xhigh";
 
@@ -33,7 +32,6 @@ interface OpenAICompatResponse {
 }
 
 export async function analyzeWithLLM(config: BriefConfig, ai: Ai, posts: DigestSourcePost[]): Promise<LLMAnalysisResult> {
-  const directionSummary = summarizeDirections(posts);
   const watchlistSummary = summarizeWatchlist(posts);
   const sourceText = posts
     .slice(0, 8)
@@ -42,17 +40,18 @@ export async function analyzeWithLLM(config: BriefConfig, ai: Ai, posts: DigestS
         `${index + 1}. 标题: ${truncate(post.title, 72)}`,
         `   作者: ${post.authorName}`,
         `   来源: ${post.sourceLabel}`,
+        `   活跃度: 排名${post.sourceRank} / 回帖${post.replyCount}`,
         `   首帖: ${truncate(post.headContent, 220)}`
       ];
       if (post.sampledReplies.length > 0) lines.push(`   回帖: ${truncate(post.sampledReplies.slice(0, 2).join(" / "), 120)}`);
-      if (post.mentionedTickers.length > 0) lines.push(`   代码: ${post.mentionedTickers.join("、")}`);
+      if (post.mentionedTickers.length > 0) lines.push(`   标的: ${post.mentionedTickers.join("、")}`);
       return lines.join("\n");
     })
     .join("\n");
   const contextText = [
-    `高频方向候选: ${directionSummary}`,
-    `高频代码候选: ${watchlistSummary}`,
-    "请优先根据“最新复盘/盘前/情绪/板块切换/节点识别”类内容做决策判断，弱化泛交流、纯鸡汤、长期成长帖。"
+    `高频标的候选: ${watchlistSummary}`,
+    "请优先根据最新复盘、盘前计划、板块切换、情绪阶段、节点识别类内容做决策判断。",
+    "请弱化泛交流、纯鸡汤、长期成长、单纯感谢互动类帖子，不要被高回复闲聊贴带偏。"
   ].join("\n");
 
   if (config.llmBaseUrl && config.llmApiKey) {
@@ -143,19 +142,6 @@ function formatModelLabel(model: string): string {
       return part.charAt(0).toUpperCase() + part.slice(1);
     })
     .join(" ");
-}
-
-function summarizeDirections(posts: DigestSourcePost[]): string {
-  const joined = posts.flatMap((post) => [post.title, post.headContent, ...post.sampledReplies]).join("\n");
-  const rules = [
-    { label: "国产算力/GPU", keywords: ["算力", "GPU", "寒武纪", "中国长城", "富瀚微", "深圳华强"] },
-    { label: "光通信/CPO", keywords: ["光模块", "CPO", "中际旭创", "新易盛", "杭电股份", "亨通光电"] },
-    { label: "AI应用", keywords: ["AI应用", "浙数文化", "传媒", "应用"] },
-    { label: "电力绿能", keywords: ["电力", "储能", "绿能", "晶科科技", "华电"] },
-    { label: "情绪修复/首板", keywords: ["首板", "弱转强", "反核", "修复", "节点", "连板"] }
-  ];
-  const picks = rules.filter((rule) => rule.keywords.some((keyword) => joined.includes(keyword))).map((rule) => rule.label).slice(0, 4);
-  return picks.length > 0 ? picks.join("、") : "短线情绪修复与板块轮动";
 }
 
 function summarizeWatchlist(posts: DigestSourcePost[]): string {

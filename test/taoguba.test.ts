@@ -129,7 +129,7 @@ describe("selection quality", () => {
   it("extracts stock names and codes from topic detail HTML", () => {
     const detail = parseDetailPage(
       "https://www.tgb.cn/a/market-1",
-      `<div class="article-content"><div class="article-text"><a name='T奥瑞德'>奥瑞德</a><a href="/quotes/sz002081">双击看 002081</a> 金螳螂卡位。</div></div>`,
+      `<div class="article-content"><div class="article-text"><a name='T奥瑞德'>奥瑞德</a><a href="/quotes/sz002081">金螳螂</a> 金螳螂卡位。</div></div>`,
       new Date("2026-04-25T08:52:00.000Z"),
       {
         id: "market",
@@ -145,6 +145,6 @@ describe("selection quality", () => {
     );
 
     expect(detail.mentionedTickers).toContain("奥瑞德");
-    expect(detail.mentionedTickers).toContain("002081");
+    expect(detail.mentionedTickers).toContain("金螳螂(002081)");
   });
 });
