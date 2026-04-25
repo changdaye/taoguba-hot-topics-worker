@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "taoguba-hot-topics-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-25",
+  "account_id": "6ef22eafdfaea04ccc59c7a4d85a087c",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true
+  },
+  "triggers": {
+    "crons": ["0 */3 * * *"]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "RUNTIME_KV",
+      "id": "982d03dcf63140d6b40e71226444fcf5",
+      "preview_id": "982d03dcf63140d6b40e71226444fcf5"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
+  "d1_databases": [
+    {
+      "binding": "BRIEF_DB",
+      "database_name": "taoguba-hot-topics",
+      "database_id": "22b046e9-f6a4-4076-900d-6fa02a3c78bc",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "DIGEST_INTERVAL_HOURS": "3",
+    "HEARTBEAT_INTERVAL_HOURS": "24",
+    "REQUEST_TIMEOUT_MS": "15000",
+    "FETCH_WINDOW_HOURS": "3",
+    "MAX_POSTS_PER_DIGEST": "12",
+    "MAX_REPLIES_PER_POST": "8",
+    "LLM_MODEL": "gpt-5.4",
+    "TGB_HOME_URL": "https://www.tgb.cn/",
+    "TGB_BBS_URL": "https://www.tgb.cn/bbs/",
+    "FAILURE_ALERT_THRESHOLD": "1",
+    "FAILURE_ALERT_COOLDOWN_MINUTES": "180"
+  }
+}
