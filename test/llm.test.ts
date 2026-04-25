@@ -51,18 +51,22 @@ function makePost(overrides: Partial<DigestSourcePost> = {}): DigestSourcePost {
 
 describe("analyzeWithLLM", () => {
   it("prefers the OpenAI-compatible proxy when configured", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "社区主线聚焦机器人回流。\n关注代码：300024、002031" } }] }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ choices: [{ message: { content: "出手判断：轻仓试错\n方向判断：机器人修复、算力回流\n关注代码：300024、002031\n风险提醒：高潮后别追高。" } }] }), { status: 200, headers: { "Content-Type": "application/json" } }));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await analyzeWithLLM({ ...makeConfig(), llmBaseUrl: "https://proxy.example.com/v1", llmApiKey: "proxy-key", llmModel: "gpt-5.4" }, { run: vi.fn() } as unknown as Ai, [makePost()]);
-    expect(result).toEqual({ analysis: "社区主线聚焦机器人回流。\n关注代码：300024、002031", modelLabel: "GPT 5.4 (xhigh)" });
+    expect(result).toEqual({ analysis: "出手判断：轻仓试错\n方向判断：机器人修复、算力回流\n关注代码：300024、002031\n风险提醒：高潮后别追高。", modelLabel: "GPT 5.4 (xhigh)" });
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(body.messages[0].content).toContain("出手判断");
+    expect(body.messages[0].content).toContain("风险提醒");
   });
 
   it("falls back to Workers AI when the proxy fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("bad gateway", { status: 502 })));
-    const run = vi.fn().mockResolvedValue({ response: "社区主线聚焦机器人回流。\n关注代码：300024、002031" });
+    const run = vi.fn().mockResolvedValue({ response: "出手判断：轻仓试错\n方向判断：机器人修复、算力回流\n关注代码：300024、002031\n风险提醒：高潮后别追高。" });
     const result = await analyzeWithLLM({ ...makeConfig(), llmBaseUrl: "https://proxy.example.com/v1", llmApiKey: "proxy-key", llmModel: "gpt-5.4" }, { run } as unknown as Ai, [makePost()]);
     expect(result.modelLabel).toBe("Llama 3.2 1B Instruct");
     expect(run).toHaveBeenCalledTimes(1);
+    expect(run.mock.calls[0]?.[1]?.messages[0].content).toContain("方向判断");
   });
 });
