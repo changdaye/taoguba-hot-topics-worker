@@ -94,3 +94,57 @@ describe("pickPostsForDigest", () => {
     expect(pickPostsForDigest(posts, 12)).toHaveLength(12);
   });
 });
+
+
+describe("selection quality", () => {
+  it("prefers recent market-analysis candidates over evergreen high-reply chat threads", () => {
+    const items = pickPostsForDigest([
+      {
+        id: "evergreen",
+        canonicalUrl: "https://www.tgb.cn/a/evergreen-1",
+        title: "近期对本人的提问太多，特开此唯一交流贴",
+        authorName: "老作者",
+        source: "bbs",
+        sourceLabel: "论坛主列表",
+        sourceRank: 20,
+        replyCount: 50000,
+        lastActiveAt: "2026-04-25T17:10:00+08:00"
+      },
+      {
+        id: "market",
+        canonicalUrl: "https://www.tgb.cn/a/market-1",
+        title: "[红包]4.24锂电启动就是高潮，伴生敌对周一是否让位？",
+        authorName: "复盘作者",
+        source: "bbs",
+        sourceLabel: "论坛主列表",
+        sourceRank: 5,
+        replyCount: 800,
+        lastActiveAt: "2026-04-25T17:10:00+08:00"
+      }
+    ], 1);
+
+    expect(items[0]?.id).toBe("market");
+  });
+
+  it("extracts stock names and codes from topic detail HTML", () => {
+    const detail = parseDetailPage(
+      "https://www.tgb.cn/a/market-1",
+      `<div class="article-content"><div class="article-text"><a name='T奥瑞德'>奥瑞德</a><a href="/quotes/sz002081">双击看 002081</a> 金螳螂卡位。</div></div>`,
+      new Date("2026-04-25T08:52:00.000Z"),
+      {
+        id: "market",
+        canonicalUrl: "https://www.tgb.cn/a/market-1",
+        title: "金螳螂卡位",
+        authorName: "复盘作者",
+        source: "bbs",
+        sourceLabel: "论坛主列表",
+        sourceRank: 5,
+        replyCount: 800,
+        lastActiveAt: "2026-04-25T17:10:00+08:00"
+      }
+    );
+
+    expect(detail.mentionedTickers).toContain("奥瑞德");
+    expect(detail.mentionedTickers).toContain("002081");
+  });
+});

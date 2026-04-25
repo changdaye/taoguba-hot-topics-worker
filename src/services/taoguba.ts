@@ -3,6 +3,11 @@ import { stripHtml, truncate } from "../lib/value";
 
 const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
 const REPUSH_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+const MARKET_TITLE_KEYWORDS = ["复盘", "涨停", "跌停", "竞价", "龙头", "板块", "情绪", "题材", "指数", "量化", "AI", "算力", "CPO", "光模块", "通信", "锂电", "医药", "航天", "重组", "芯片", "可转债", "大盘", "盘面", "连板", "预期", "节点", "仓位", "低吸", "反核", "修复", "抱团", "首板", "二板", "主线", "市场", "热点"];
+const GENERIC_TITLE_KEYWORDS = ["交流贴", "提问太多", "唯一交流贴", "成熟交易者", "年赛结束", "足迹", "天之道", "新开一帖", "每日实盘", "路好难", "成长", "炼成", "问答", "心路", "闲聊"];
+const IGNORED_MENTION_TOKENS = new Set(["淘股吧", "A股", "市场", "超短", "主线", "龙头", "情绪", "指数", "题材", "复盘", "盘面"]);
+const MS_PER_HOUR = 60 * 60 * 1000;
+const MS_PER_DAY = 24 * MS_PER_HOUR;
 
 export async function fetchTaogubaSnapshot(config: BriefConfig, now = new Date()): Promise<TaogubaSnapshot> {
   const [homeHtml, bbsHtml] = await Promise.all([
@@ -65,7 +70,10 @@ export function parseDetailPage(url: string, html: string, now = new Date(), see
   const sourceLabel = seed?.sourceLabel ?? (source === "home" ? "首页推荐" : "论坛主列表");
   const sourceRank = seed?.sourceRank ?? 1;
   const replyCount = seed?.replyCount ?? sampledReplies.length;
-  const mentionedTickers = extractTickers([title, headContent, ...sampledReplies].join("\n"));
+  const mentionedTickers = dedupeStrings([
+    ...extractTickers([title, headContent, ...sampledReplies].join("\n")),
+    ...extractTickersFromHtml(html)
+  ]).slice(0, 8);
 
   return {
     id: seed?.id ?? normalizeTopicId(url),
@@ -222,11 +230,17 @@ function dedupeCandidates(candidates: PostCandidate[]): PostCandidate[] {
 }
 
 function scoreCandidate(candidate: PostCandidate): number {
-  const sourceBoost = candidate.source === "home" ? 1000 : 0;
-  const activity = Date.parse(candidate.lastActiveAt);
-  const timeBoost = Number.isNaN(activity) ? 0 : Math.floor(activity / 1000);
-  const rankPenalty = candidate.sourceRank * 10;
-  return sourceBoost + timeBoost + candidate.replyCount * 20 - rankPenalty;
+  const now = Date.now();
+  const activeAt = Date.parse(candidate.lastActiveAt);
+  const publishedAt = candidate.publishedAt ? Date.parse(candidate.publishedAt) : Number.NaN;
+  const activeHours = Number.isNaN(activeAt) ? 999 : Math.max(0, (now - activeAt) / MS_PER_HOUR);
+  const publishedDays = Number.isNaN(publishedAt) ? 999 : Math.max(0, (now - publishedAt) / MS_PER_DAY);
+  const sourceBoost = candidate.source === "home" ? 40 : 0;
+  const rankBoost = Math.max(0, 140 - candidate.sourceRank * 8);
+  const recencyBoost = activeHours <= 2 ? 40 : activeHours <= 12 ? 25 : activeHours <= 24 ? 15 : activeHours <= 72 ? 8 : 0;
+  const freshnessBoost = publishedDays <= 7 ? 20 : publishedDays <= 30 ? 10 : 0;
+  const replyBoost = Math.min(18, Math.log10(candidate.replyCount + 1) * 6);
+  return sourceBoost + rankBoost + recencyBoost + freshnessBoost + replyBoost + scoreTitleRelevance(candidate.title);
 }
 
 function normalizeTopicId(input: string): string {
@@ -235,7 +249,56 @@ function normalizeTopicId(input: string): string {
 }
 
 function extractTickers(text: string): string[] {
-  return [...new Set(Array.from(text.matchAll(/\b\d{6}\b/g)).map((match) => match[0]))].slice(0, 8);
+  return dedupeStrings(Array.from(text.matchAll(/\b\d{6}\b/g)).map((match) => match[0])).slice(0, 8);
+}
+
+function extractTickersFromHtml(html: string): string[] {
+  const mentions: string[] = [];
+
+  for (const match of html.matchAll(/name=['"]T([^'"]{2,20})['"]/g)) {
+    const token = normalizeMentionToken(match[1]);
+    if (token) mentions.push(token);
+  }
+
+  for (const match of html.matchAll(/stockName=([^&'"\s>]+)/g)) {
+    const token = normalizeMentionToken(decodeUrlComponent(match[1]));
+    if (token) mentions.push(token);
+  }
+
+  for (const match of html.matchAll(/\/quotes\/(?:sh|sz)(\d{6})/g)) {
+    const token = normalizeMentionToken(match[1]);
+    if (token) mentions.push(token);
+  }
+
+  return dedupeStrings(mentions).slice(0, 8);
+}
+
+function scoreTitleRelevance(title: string): number {
+  const positive = countKeywordHits(title, MARKET_TITLE_KEYWORDS) * 14;
+  const negative = countKeywordHits(title, GENERIC_TITLE_KEYWORDS) * 18;
+  return positive - negative;
+}
+
+function countKeywordHits(text: string, keywords: string[]): number {
+  return keywords.reduce((total, keyword) => total + (text.includes(keyword) ? 1 : 0), 0);
+}
+
+function normalizeMentionToken(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const cleaned = stripHtml(value).replace(/^T/, "").replace(/\s+/g, "").trim();
+  if (!cleaned) return undefined;
+  if (IGNORED_MENTION_TOKENS.has(cleaned)) return undefined;
+  if (/^\d{6}$/.test(cleaned)) return cleaned;
+  if (/^[一-龥A-Za-z]{2,12}$/.test(cleaned)) return cleaned;
+  return undefined;
+}
+
+function decodeUrlComponent(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 function extractFirst(text: string, pattern: RegExp): string | undefined {
