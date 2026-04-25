@@ -10,15 +10,15 @@ const SYSTEM_PROMPT = `你现在是一名中文A股短线交易助手。
 方向判断：...
 观察标的：...
 风险提醒：...
-- “出手判断”必须偏交易动作，只能写类似：继续观望、轻仓试错、只做最强、分歧低吸、不建议出手、不可追高。
+- “出手判断”只能从以下四个值里四选一：继续观望、轻仓试错、只做最强、不建议出手。
 - “方向判断”聚焦 2 到 4 个最值得盯的方向/风格，优先提炼盘面主线、资金切换、情绪阶段，不要空泛复述。
-- “观察标的”一律用 股名(代码) 格式，控制在 4 到 8 个；没有明确候选就写“观察标的：暂无明确高频标的”。
+- “观察标的”一律用 股名(代码) 格式，控制在 3 到 5 个；没有明确候选就写“观察标的：暂无明确高频标的”。
 - “风险提醒”要明确说最大的失败场景，例如高位分歧扩散、高潮次日兑现、一进二爆头、题材回流不及预期。
 - 不要输出编号列表，不要逐条罗列帖子标题，不要写时间、原帖链接、素材字段名、免责声明。
-- 如果证据不足，宁可保守，不要为了显得积极而强行看多。`;
+- 如果证据不足，宁可保守，不要为了显得积极而强行看多；拿不准时默认“继续观望”。`;
 const DEFAULT_WORKERS_AI_MODEL = "@cf/meta/llama-3.2-1b-instruct";
-const OPENAI_COMPAT_REASONING_EFFORT = "medium";
-const OPENAI_COMPAT_MAX_COMPLETION_TOKENS = 320;
+const OPENAI_COMPAT_REASONING_EFFORT = "xhigh";
+const OPENAI_COMPAT_MAX_COMPLETION_TOKENS = 180;
 
 interface WorkersAIResult {
   response?: string;
@@ -35,24 +35,20 @@ interface OpenAICompatResponse {
 export async function analyzeWithLLM(config: BriefConfig, ai: Ai, posts: DigestSourcePost[]): Promise<LLMAnalysisResult> {
   const watchlistSummary = summarizeWatchlist(posts);
   const sourceText = posts
-    .slice(0, 8)
+    .slice(0, 4)
     .map((post, index) => {
       const lines = [
-        `${index + 1}. 标题: ${truncate(post.title, 72)}`,
-        `   作者: ${post.authorName}`,
-        `   来源: ${post.sourceLabel}`,
-        `   活跃度: 排名${post.sourceRank} / 回帖${post.replyCount}`,
-        `   首帖: ${truncate(post.headContent, 220)}`
+        `${index + 1}. ${truncate(post.title, 56)}`,
+        `活跃:排${post.sourceRank}/回${post.replyCount}`,
+        `要点:${truncate(post.headContent, 90)}`
       ];
-      if (post.sampledReplies.length > 0) lines.push(`   回帖: ${truncate(post.sampledReplies.slice(0, 2).join(" / "), 120)}`);
-      if (post.mentionedTickers.length > 0) lines.push(`   标的: ${post.mentionedTickers.join("、")}`);
-      return lines.join("\n");
+      if (post.mentionedTickers.length > 0) lines.push(`标的:${post.mentionedTickers.slice(0, 5).join("、")}`);
+      return lines.join(" | ");
     })
     .join("\n");
   const contextText = [
     `高频标的候选: ${watchlistSummary}`,
-    "请优先根据最新复盘、盘前计划、板块切换、情绪阶段、节点识别类内容做决策判断。",
-    "请弱化泛交流、纯鸡汤、长期成长、单纯感谢互动类帖子，不要被高回复闲聊贴带偏。"
+    "优先根据最新复盘、盘前计划、板块切换、情绪阶段、节点识别做判断；弱化泛交流和闲聊贴。"
   ].join("\n");
 
   if (config.llmBaseUrl && config.llmApiKey) {
@@ -154,6 +150,6 @@ function summarizeWatchlist(posts: DigestSourcePost[]): string {
   return [...counts.entries()]
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "zh-CN"))
     .map(([token]) => token)
-    .slice(0, 8)
+    .slice(0, 5)
     .join("、") || "暂无明确高频代码";
 }

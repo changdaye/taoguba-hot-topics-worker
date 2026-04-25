@@ -2,6 +2,7 @@ import type { DigestSourcePost, RuntimeState } from "../types";
 import { truncate } from "./value";
 
 const MAX_MESSAGE_LENGTH = 2600;
+const ACTION_VALUES = ["继续观望", "轻仓试错", "只做最强", "不建议出手"] as const;
 const DIRECTION_RULES = [
   { label: "国产算力 / AI硬件", keywords: ["算力", "CPO", "光模块", "光通信", "GPU", "服务器", "国产替代", "通信", "中际旭创", "新易盛", "杭电股份", "亨通光电", "中国长城", "富瀚微", "深圳华强"] },
   { label: "机器人", keywords: ["机器人", "人形", "减速器", "伺服", "智能制造"] },
@@ -80,9 +81,9 @@ export function normalizeAnalysisText(text: string): string {
     .filter((line) => !/^时间[:：]/.test(line))
     .filter((line) => !/^链接[:：]/.test(line));
 
-  const action = pickSection(lines, "出手判断") ?? "仅供观察，等待更明确的模型判断后再决定是否出手。";
+  const action = normalizeAction(pickSection(lines, "出手判断"));
   const direction = pickSection(lines, "方向判断") ?? fallbackDirection(lines, cleaned);
-  const watchlist = pickSection(lines, "观察标的") ?? pickSection(lines, "关注代码") ?? inferWatchlistFromText(cleaned);
+  const watchlist = normalizeWatchlist(pickSection(lines, "观察标的") ?? pickSection(lines, "关注代码") ?? inferWatchlistFromText(cleaned));
   const risk = pickSection(lines, "风险提醒") ?? "当前输出未完整命中决策格式，不建议据此直接重仓。";
 
   return [
@@ -94,7 +95,7 @@ export function normalizeAnalysisText(text: string): string {
 }
 
 function collectTickers(items: DigestSourcePost[]): string[] {
-  return [...new Set(items.flatMap((item) => item.mentionedTickers))].slice(0, 8);
+  return [...new Set(items.flatMap((item) => item.mentionedTickers))].slice(0, 5);
 }
 
 function pickSection(lines: string[], label: string): string | undefined {
@@ -130,9 +131,33 @@ function inferDirectionFromText(text: string): string {
 
 function inferWatchlistFromText(text: string): string {
   const explicit = text.match(/(?:观察标的|关注代码)[:：]\s*([^\n]+)/)?.[1]?.trim();
-  if (explicit) return explicit;
+  if (explicit) return normalizeWatchlist(explicit);
   const candidates = Array.from(new Set(text.match(/\b\d{6}\b/g) ?? [])).slice(0, 8);
-  return candidates.length > 0 ? candidates.join("、") : "暂无明确高频标的";
+  return candidates.length > 0 ? candidates.slice(0, 5).join("、") : "暂无明确高频标的";
+}
+
+function normalizeAction(value: string | undefined): string {
+  const cleaned = value?.trim() ?? "";
+  if (!cleaned) return "继续观望";
+  if ((ACTION_VALUES as readonly string[]).includes(cleaned)) return cleaned;
+  const ordered = [...ACTION_VALUES]
+    .map((label) => ({ label, index: cleaned.indexOf(label) }))
+    .filter((entry) => entry.index >= 0)
+    .sort((left, right) => left.index - right.index);
+  if (ordered.length > 0) return ordered[0].label;
+  if (/(不建议|不要|不可|别做|谨慎|空仓)/.test(cleaned)) return "不建议出手";
+  if (/(最强|龙头|核心前排)/.test(cleaned)) return "只做最强";
+  if (/(轻仓|试错|低吸|小仓)/.test(cleaned)) return "轻仓试错";
+  return "继续观望";
+}
+
+function normalizeWatchlist(value: string): string {
+  const items = value
+    .split(/[、，,；;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (items.length === 0) return "暂无明确高频标的";
+  return [...new Set(items)].slice(0, 5).join("、");
 }
 
 function limitMessage(text: string): string {

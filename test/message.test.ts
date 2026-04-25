@@ -22,10 +22,14 @@ function makePost(overrides: Partial<DigestSourcePost> = {}): DigestSourcePost {
   };
 }
 
+function readWatchlist(result: string): string {
+  return result.split("\n").find((line) => line.startsWith("观察标的：")) ?? "";
+}
+
 describe("buildDigestMessage", () => {
   it("includes the model label and detailed report footer", () => {
     const result = buildDigestMessage(
-      "出手判断：轻仓试错，只做最强。\n方向判断：机器人修复、算力回流。\n观察标的：机器人(300024)、算力核心(002031)\n风险提醒：高潮后别追高。",
+      "出手判断：轻仓试错，只做最强。\n方向判断：机器人修复、算力回流。\n观察标的：机器人(300024)、算力核心(002031)、龙头A(000001)、龙头B(000002)、龙头C(000003)、龙头D(000004)\n风险提醒：高潮后别追高。",
       [makePost()],
       "https://cos.example/report.md",
       "GPT 5.4 (xhigh)"
@@ -33,7 +37,7 @@ describe("buildDigestMessage", () => {
 
     expect(result).toContain("🤖 模型：GPT 5.4 (xhigh)");
     expect(result).toContain("出手判断：轻仓试错");
-    expect(result).toContain("观察标的：机器人(300024)、算力核心(002031)");
+    expect(readWatchlist(result)).toBe("观察标的：机器人(300024)、算力核心(002031)、龙头A(000001)、龙头B(000002)、龙头C(000003)");
     expect(result).toContain("详细版报告:");
     expect(result).not.toContain("链接:");
   });
@@ -41,10 +45,10 @@ describe("buildDigestMessage", () => {
 
 describe("normalizeAnalysisText", () => {
   it("normalizes analysis into a pre-market decision card", () => {
-    const result = normalizeAnalysisText("出手判断：轻仓试错\n方向判断：机器人修复、算力回流\n关注代码：机器人(300024)、算力核心(002031)\n风险提醒：高潮后别追高。");
-    expect(result).toContain("出手判断：");
+    const result = normalizeAnalysisText("出手判断：分歧低吸\n方向判断：机器人修复、算力回流\n关注代码：机器人(300024)、算力核心(002031)、龙头A(000001)、龙头B(000002)、龙头C(000003)、龙头D(000004)\n风险提醒：高潮后别追高。");
+    expect(result).toContain("出手判断：轻仓试错");
     expect(result).toContain("方向判断：");
-    expect(result).toContain("观察标的：机器人(300024)、算力核心(002031)");
+    expect(readWatchlist(result)).toBe("观察标的：机器人(300024)、算力核心(002031)、龙头A(000001)、龙头B(000002)、龙头C(000003)");
     expect(result).toContain("风险提醒：");
   });
 });
