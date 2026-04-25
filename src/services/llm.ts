@@ -1,21 +1,12 @@
 import type { BriefConfig, DigestSourcePost, LLMAnalysisResult } from "../types";
 import { truncate } from "../lib/value";
 
-const SYSTEM_PROMPT = `你现在是一名中文A股短线交易助手。
-你的任务不是做中立摘要，而是基于淘股吧热帖内容，输出一张“短线决策卡片”。
-
-严格要求：
-- 严格只输出四行，且必须按下面格式：
+const SYSTEM_PROMPT = `你是中文A股短线交易助手，只输出四行：
 出手判断：...
 方向判断：...
 观察标的：...
 风险提醒：...
-- “出手判断”只能从以下四个值里四选一：继续观望、轻仓试错、只做最强、不建议出手。
-- “方向判断”聚焦 2 到 4 个最值得盯的方向/风格，优先提炼盘面主线、资金切换、情绪阶段，不要空泛复述。
-- “观察标的”一律用 股名(代码) 格式，控制在 3 到 5 个；没有明确候选就写“观察标的：暂无明确高频标的”。
-- “风险提醒”要明确说最大的失败场景，例如高位分歧扩散、高潮次日兑现、一进二爆头、题材回流不及预期。
-- 不要输出编号列表，不要逐条罗列帖子标题，不要写时间、原帖链接、素材字段名、免责声明。
-- 如果证据不足，宁可保守，不要为了显得积极而强行看多；拿不准时默认“继续观望”。`;
+规则：出手判断只能四选一（继续观望、轻仓试错、只做最强、不建议出手）；观察标的只写3到5个股名(代码)；拿不准时默认继续观望。`;
 const DEFAULT_WORKERS_AI_MODEL = "@cf/meta/llama-3.2-1b-instruct";
 const OPENAI_COMPAT_REASONING_EFFORT = "xhigh";
 const OPENAI_COMPAT_MAX_COMPLETION_TOKENS = 180;
@@ -35,20 +26,21 @@ interface OpenAICompatResponse {
 export async function analyzeWithLLM(config: BriefConfig, ai: Ai, posts: DigestSourcePost[]): Promise<LLMAnalysisResult> {
   const watchlistSummary = summarizeWatchlist(posts);
   const sourceText = posts
-    .slice(0, 4)
+    .slice(0, 2)
     .map((post, index) => {
       const lines = [
-        `${index + 1}. ${truncate(post.title, 56)}`,
+        `${index + 1}. ${truncate(post.title, 48)}`,
         `活跃:排${post.sourceRank}/回${post.replyCount}`,
-        `要点:${truncate(post.headContent, 90)}`
+        `要点:${truncate(post.headContent, 55)}`
       ];
-      if (post.mentionedTickers.length > 0) lines.push(`标的:${post.mentionedTickers.slice(0, 5).join("、")}`);
+      if (post.sampledReplies.length > 0) lines.push(`回帖:${truncate(post.sampledReplies[0], 36)}`);
+      if (post.mentionedTickers.length > 0) lines.push(`标的:${post.mentionedTickers.slice(0, 4).join("、")}`);
       return lines.join(" | ");
     })
     .join("\n");
   const contextText = [
     `高频标的候选: ${watchlistSummary}`,
-    "优先根据最新复盘、盘前计划、板块切换、情绪阶段、节点识别做判断；弱化泛交流和闲聊贴。"
+    "优先看复盘、盘前计划、板块切换和情绪节点；弱化闲聊贴。"
   ].join("\n");
 
   if (config.llmBaseUrl && config.llmApiKey) {

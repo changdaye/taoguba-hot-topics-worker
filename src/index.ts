@@ -153,6 +153,11 @@ function jsonResponse(data: Record<string, unknown>, status = 200): Response {
   return Response.json(data, { status });
 }
 
+export function queueManualTrigger(ctx: ExecutionContext, task: () => Promise<unknown>): Response {
+  ctx.waitUntil(task());
+  return jsonResponse({ ok: true, queued: true }, 202);
+}
+
 async function buildHealthResponse(env: Env): Promise<Record<string, unknown>> {
   const runtimeState: RuntimeState = await getRuntimeState(env.RUNTIME_KV);
   const recentRuns = await listRecentDigestRuns(env.BRIEF_DB, 5);
@@ -165,7 +170,7 @@ async function buildHealthResponse(env: Env): Promise<Record<string, unknown>> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
@@ -178,13 +183,9 @@ export default {
       if (!auth.ok) {
         return jsonResponse({ ok: false, error: auth.error }, auth.status);
       }
-      try {
-        const result = await runBrief(env);
-        return jsonResponse({ ok: true, ...result });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return jsonResponse({ ok: false, error: message }, 500);
-      }
+      return queueManualTrigger(ctx, async () => {
+        await runBrief(env);
+      });
     }
 
     return jsonResponse({ ok: false, error: "not found" }, 404);

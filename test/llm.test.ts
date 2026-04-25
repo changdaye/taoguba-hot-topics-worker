@@ -59,8 +59,8 @@ describe("analyzeWithLLM", () => {
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
     expect(body.messages[0].content).toContain("短线交易助手");
     expect(body.messages[0].content).toContain("观察标的");
-    expect(body.messages[0].content).toContain("四个值里四选一");
-    expect(body.messages[0].content).toContain("控制在 3 到 5 个");
+    expect(body.messages[0].content).toContain("只能四选一");
+    expect(body.messages[0].content).toContain("只写3到5个股名(代码)");
     expect(body.messages[1].content).toContain("机器人(300024)");
     expect(body.reasoning_effort).toBe("xhigh");
     expect(body.max_completion_tokens).toBe(180);
