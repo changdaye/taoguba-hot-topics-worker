@@ -55,11 +55,13 @@ describe("analyzeWithLLM", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await analyzeWithLLM({ ...makeConfig(), llmBaseUrl: "https://proxy.example.com/v1", llmApiKey: "proxy-key", llmModel: "gpt-5.4" }, { run: vi.fn() } as unknown as Ai, [makePost()]);
-    expect(result).toEqual({ analysis: "出手判断：轻仓试错，只做最强。\n方向判断：机器人修复、算力回流。\n观察标的：机器人(300024)、算力核心(002031)\n风险提醒：高潮后别追高。", modelLabel: "GPT 5.4 (xhigh)" });
+    expect(result).toEqual({ analysis: "出手判断：轻仓试错，只做最强。\n方向判断：机器人修复、算力回流。\n观察标的：机器人(300024)、算力核心(002031)\n风险提醒：高潮后别追高。", modelLabel: "GPT 5.4 (medium)" });
     const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
     expect(body.messages[0].content).toContain("短线交易助手");
     expect(body.messages[0].content).toContain("观察标的");
     expect(body.messages[1].content).toContain("机器人(300024)");
+    expect(body.reasoning_effort).toBe("medium");
+    expect(body.max_completion_tokens).toBe(320);
   });
 
   it("falls back to Workers AI when the proxy fails", async () => {

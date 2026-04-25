@@ -17,7 +17,8 @@ const SYSTEM_PROMPT = `你现在是一名中文A股短线交易助手。
 - 不要输出编号列表，不要逐条罗列帖子标题，不要写时间、原帖链接、素材字段名、免责声明。
 - 如果证据不足，宁可保守，不要为了显得积极而强行看多。`;
 const DEFAULT_WORKERS_AI_MODEL = "@cf/meta/llama-3.2-1b-instruct";
-const OPENAI_COMPAT_REASONING_EFFORT = "xhigh";
+const OPENAI_COMPAT_REASONING_EFFORT = "medium";
+const OPENAI_COMPAT_MAX_COMPLETION_TOKENS = 320;
 
 interface WorkersAIResult {
   response?: string;
@@ -75,6 +76,7 @@ async function analyzeWithOpenAICompatible(config: BriefConfig, sourceText: stri
     body: JSON.stringify({
       model: config.llmModel,
       reasoning_effort: OPENAI_COMPAT_REASONING_EFFORT,
+      max_completion_tokens: OPENAI_COMPAT_MAX_COMPLETION_TOKENS,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: `以下是淘股吧热帖与回帖内容，请输出一份飞书热度简报：\n\n${sourceText}` }
