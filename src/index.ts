@@ -183,9 +183,18 @@ export default {
       if (!auth.ok) {
         return jsonResponse({ ok: false, error: auth.error }, auth.status);
       }
-      return queueManualTrigger(ctx, async () => {
-        await runBrief(env);
-      });
+      if (url.searchParams.get("async") === "1") {
+        return queueManualTrigger(ctx, async () => {
+          await runBrief(env);
+        });
+      }
+      try {
+        const result = await runBrief(env);
+        return jsonResponse({ ok: true, ...result });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return jsonResponse({ ok: false, error: message }, 500);
+      }
     }
 
     return jsonResponse({ ok: false, error: "not found" }, 404);
