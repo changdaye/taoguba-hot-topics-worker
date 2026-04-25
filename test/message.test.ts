@@ -31,7 +31,7 @@ describe("buildDigestMessage", () => {
     const result = buildDigestMessage(
       "出手判断：轻仓试错，只做最强。\n方向判断：机器人修复、算力回流。\n观察标的：机器人(300024)、算力核心(002031)、龙头A(000001)、龙头B(000002)、龙头C(000003)、龙头D(000004)\n风险提醒：高潮后别追高。",
       [makePost()],
-      "https://cos.example/report.md",
+      "https://cos.example/report.html",
       "GPT 5.4 (xhigh)"
     );
 
@@ -55,7 +55,7 @@ describe("normalizeAnalysisText", () => {
 
 describe("buildFallbackMessage", () => {
   it("renders a conservative decision card when AI output is unavailable", () => {
-    const result = buildFallbackMessage([makePost()], "https://cos.example/report.md", "Llama 3.2 1B Instruct");
+    const result = buildFallbackMessage([makePost()], "https://cos.example/report.html", "Llama 3.2 1B Instruct");
     expect(result).toContain("说明: AI 摘要暂不可用");
     expect(result).toContain("出手判断：");
     expect(result).toContain("方向判断：");

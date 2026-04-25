@@ -20,18 +20,19 @@ const posts: DigestSourcePost[] = [{
 }];
 
 describe("buildDetailedReport", () => {
-  it("renders a markdown detailed report for Taoguba posts", () => {
+  it("renders an html detailed report for Taoguba posts", () => {
     const report = buildDetailedReport("社区主线聚焦机器人回流。\n关注代码：300024、002031", posts, true, new Date("2026-04-25T01:02:03Z"));
-    expect(report).toContain("# 淘股吧热帖简报详细版");
-    expect(report).toContain("## 本轮总览");
-    expect(report).toContain("### 1. 机器人概念分歧后回流");
-    expect(report).toContain("- 原帖链接: https://www.tgb.cn/a/2rhqO0yVCwy-1");
+    expect(report).toContain("<!doctype html>");
+    expect(report).toContain("<h1>淘股吧热帖简报详细版</h1>");
+    expect(report).toContain("<h2>本轮总览</h2>");
+    expect(report).toContain("1. 机器人概念分歧后回流");
+    expect(report).toContain("https://www.tgb.cn/a/2rhqO0yVCwy-1");
   });
 });
 
 describe("buildDetailedReportObjectKey", () => {
-  it("builds a stable markdown object key", () => {
+  it("builds a stable html object key", () => {
     const key = buildDetailedReportObjectKey(new Date("2026-04-25T01:02:03Z"));
-    expect(key).toBe("taoguba-hot-topics-worker/20260425010203.md");
+    expect(key).toBe("taoguba-hot-topics-worker/20260425010203.html");
   });
 });
