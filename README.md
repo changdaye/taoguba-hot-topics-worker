@@ -35,7 +35,7 @@ npx wrangler dev
 - `FETCH_WINDOW_HOURS`
 - `MAX_POSTS_PER_DIGEST`
 - `MAX_REPLIES_PER_POST`
-- `LLM_MODEL`
+- `LLM_MODEL`（默认部署值为 `gpt-5.4`，若未配置代理则自动回退到 Workers AI 模型）
 - `TGB_HOME_URL`
 - `TGB_BBS_URL`
 - `FAILURE_ALERT_THRESHOLD`
@@ -51,4 +51,6 @@ npx wrangler dev
 - `TENCENT_COS_SECRET_KEY`
 - `TENCENT_COS_BUCKET`
 - `TENCENT_COS_REGION`
+- `LLM_BASE_URL`（可选，配置后优先走大模型代理）
+- `LLM_API_KEY`（可选，与 `LLM_BASE_URL` 配套）
 - `TENCENT_COS_BASE_URL`（可选）

@@ -37,7 +37,7 @@
     "FETCH_WINDOW_HOURS": "3",
     "MAX_POSTS_PER_DIGEST": "12",
     "MAX_REPLIES_PER_POST": "8",
-    "LLM_MODEL": "@cf/meta/llama-3.1-8b-instruct",
+    "LLM_MODEL": "gpt-5.4",
     "TGB_HOME_URL": "https://www.tgb.cn/",
     "TGB_BBS_URL": "https://www.tgb.cn/bbs/",
     "FAILURE_ALERT_THRESHOLD": "1",
