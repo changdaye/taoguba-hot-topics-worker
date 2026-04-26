@@ -22,6 +22,7 @@ function makeConfig(): BriefConfig {
     cosBucket: "bucket",
     cosRegion: "na-ashburn",
     cosBaseUrl: "https://bucket.cos.na-ashburn.myqcloud.com",
+  workerPublicBaseUrl: "https://example.workers.dev",
     llmBaseUrl: "",
     llmApiKey: "",
     tgbHomeUrl: "https://www.tgb.cn/",

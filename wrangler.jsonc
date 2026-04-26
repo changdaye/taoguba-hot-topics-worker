@@ -3,7 +3,7 @@
   "name": "taoguba-hot-topics-worker",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-25",
-  "account_id": "6ef22eafdfaea04ccc59c7a4d85a087c",
+  "account_id": "d66336592b3f62650da1e5fa60e4a28c",
   "workers_dev": true,
   "preview_urls": false,
   "observability": {
@@ -15,8 +15,8 @@
   "kv_namespaces": [
     {
       "binding": "RUNTIME_KV",
-      "id": "982d03dcf63140d6b40e71226444fcf5",
-      "preview_id": "982d03dcf63140d6b40e71226444fcf5"
+      "id": "e8a18a11605240cd8d677801d36a1e42",
+      "preview_id": "e8a18a11605240cd8d677801d36a1e42"
     }
   ],
   "ai": {
@@ -26,7 +26,7 @@
     {
       "binding": "BRIEF_DB",
       "database_name": "taoguba-hot-topics",
-      "database_id": "22b046e9-f6a4-4076-900d-6fa02a3c78bc",
+      "database_id": "77b2df7c-9eb3-4472-b4c9-e0b4b5a9897d",
       "migrations_dir": "migrations"
     }
   ],

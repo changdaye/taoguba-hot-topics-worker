@@ -3,6 +3,7 @@ import { getPostPushState, insertDigestRun, listRecentDigestRuns, markDigestRunP
 import { authorizeAdminRequest } from "./lib/admin";
 import { buildDigestMessage, buildFailureAlertMessage, buildFallbackMessage, buildHeartbeatMessage, buildWakeSummaryMessage } from "./lib/message";
 import { buildDetailedReport } from "./lib/report";
+import { buildDetailedReportPublicUrl, maybeHandleDetailedReportRequest, saveDetailedReportCopy } from "./lib/report-storage";
 import { getRuntimeState, recordFailure, recordSuccess, setRuntimeState, shouldSendFailureAlert, shouldSendHeartbeat } from "./lib/runtime";
 import { clearQuietDigest, isDigestQuietHours, noteQuietDigest } from "./lib/schedule";
 import { uploadDetailedReportToCos } from "./services/cos";
@@ -47,9 +48,11 @@ async function runBrief(env: Env): Promise<{ candidateCount: number; itemCount: 
 
     const detailedReport = buildDetailedReport(analysis ?? buildFallbackMessage(postsToPush), postsToPush, aiAnalysis, now);
     const uploaded = await uploadDetailedReportToCos(config, detailedReport, now);
+    await saveDetailedReportCopy(env.RUNTIME_KV, uploaded.key, detailedReport);
+    const publicReportUrl = buildDetailedReportPublicUrl(config.workerPublicBaseUrl, uploaded.key);
     const baseMessage = aiAnalysis
-      ? buildDigestMessage(analysis ?? "", postsToPush, uploaded.url, modelLabel)
-      : buildFallbackMessage(postsToPush, uploaded.url, modelLabel);
+      ? buildDigestMessage(analysis ?? "", postsToPush, publicReportUrl, modelLabel)
+      : buildFallbackMessage(postsToPush, publicReportUrl, modelLabel);
     const message = !quietHours && (state.quietDigestCount ?? 0) > 0
       ? buildWakeSummaryMessage(baseMessage, state.quietDigestCount ?? 0)
       : baseMessage;
@@ -63,7 +66,7 @@ async function runBrief(env: Env): Promise<{ candidateCount: number; itemCount: 
       aiAnalysis,
       messageText: message,
       analysisText: analysis,
-      detailedReportUrl: uploaded.url,
+      detailedReportUrl: publicReportUrl,
       sourceItems: postsToPush,
       now
     });
@@ -75,7 +78,7 @@ async function runBrief(env: Env): Promise<{ candidateCount: number; itemCount: 
       await markDigestRunPushed(env.BRIEF_DB, runId, true);
       await maybeSendHeartbeat(config, nextState, now);
       await setRuntimeState(env.RUNTIME_KV, nextState);
-      return { candidateCount: snapshot.items.length, itemCount: postsToPush.length, aiAnalysis, detailedReportUrl: uploaded.url };
+      return { candidateCount: snapshot.items.length, itemCount: postsToPush.length, aiAnalysis, detailedReportUrl: publicReportUrl };
     }
 
     try {
@@ -93,7 +96,7 @@ async function runBrief(env: Env): Promise<{ candidateCount: number; itemCount: 
     }
     nextState = await maybeSendHeartbeat(config, nextState, now);
     await setRuntimeState(env.RUNTIME_KV, nextState);
-    return { candidateCount: snapshot.items.length, itemCount: postsToPush.length, aiAnalysis, detailedReportUrl: uploaded.url };
+    return { candidateCount: snapshot.items.length, itemCount: postsToPush.length, aiAnalysis, detailedReportUrl: publicReportUrl };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     let nextState = recordFailure(state, message, now);
@@ -172,6 +175,11 @@ async function buildHealthResponse(env: Env): Promise<Record<string, unknown>> {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (request.method === "GET") {
+      const reportResponse = await maybeHandleDetailedReportRequest(request, env.RUNTIME_KV);
+      if (reportResponse) return reportResponse;
+    }
 
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
       return jsonResponse(await buildHealthResponse(env));
