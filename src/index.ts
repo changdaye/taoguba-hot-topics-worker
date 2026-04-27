@@ -5,7 +5,7 @@ import { buildDigestMessage, buildFailureAlertMessage, buildFallbackMessage, bui
 import { buildDetailedReport } from "./lib/report";
 import { buildDetailedReportPublicUrl, maybeHandleDetailedReportRequest, saveDetailedReportCopy } from "./lib/report-storage";
 import { getRuntimeState, recordFailure, recordSuccess, setRuntimeState, shouldSendFailureAlert, shouldSendHeartbeat } from "./lib/runtime";
-import { uploadDetailedReportToCos } from "./services/cos";
+import { uploadDetailedReportToCos, uploadFeishuMessageToCos } from "./services/cos";
 import { pushToFeishu } from "./services/feishu";
 import { analyzeWithLLM } from "./services/llm";
 import { buildPostFingerprint, fetchPostDetails, fetchTaogubaSnapshot, pickPostsForDigest, shouldRepushPost } from "./services/taoguba";
@@ -69,6 +69,7 @@ async function runBrief(env: Env): Promise<{ candidateCount: number; itemCount: 
 
     let nextState = recordSuccess(state, now);
     try {
+      await uploadFeishuMessageToCos(config, message, now);
       await pushToFeishu(config, message);
       await persistPostStates(env, postsToPush, runId, now);
       await markDigestRunPushed(env.BRIEF_DB, runId, true);
@@ -168,7 +169,6 @@ export default {
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
       return jsonResponse(await buildHealthResponse(env));
     }
-
     if (request.method === "POST" && url.pathname === "/admin/trigger") {
       const config = parseConfig(env);
       const auth = authorizeAdminRequest(request, config.manualTriggerToken);

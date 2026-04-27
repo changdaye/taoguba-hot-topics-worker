@@ -27,10 +27,6 @@ function makeConfig(): BriefConfig {
     llmApiKey: "",
     tgbHomeUrl: "https://www.tgb.cn/",
     tgbBbsUrl: "https://www.tgb.cn/bbs/",
-    finalSummaryHourLocal: 0,
-    finalSummaryMinuteLocal: 30,
-    finalSummaryLookbackHours: 24,
-    marketTimezone: "Asia/Shanghai"
   };
 }
 

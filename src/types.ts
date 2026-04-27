@@ -25,10 +25,6 @@ export interface Env {
   FAILURE_ALERT_COOLDOWN_MINUTES?: string;
   TGB_HOME_URL?: string;
   TGB_BBS_URL?: string;
-  FINAL_SUMMARY_HOUR_LOCAL?: string;
-  FINAL_SUMMARY_MINUTE_LOCAL?: string;
-  FINAL_SUMMARY_LOOKBACK_HOURS?: string;
-  MARKET_TIMEZONE?: string;
 }
 
 export interface BriefConfig {
@@ -55,10 +51,6 @@ export interface BriefConfig {
   failureAlertCooldownMinutes: number;
   tgbHomeUrl: string;
   tgbBbsUrl: string;
-  finalSummaryHourLocal: number;
-  finalSummaryMinuteLocal: number;
-  finalSummaryLookbackHours: number;
-  marketTimezone: string;
 }
 
 export type PostSource = "home" | "bbs";

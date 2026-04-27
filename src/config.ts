@@ -33,9 +33,5 @@ export function parseConfig(env: Env): BriefConfig {
     failureAlertCooldownMinutes: toInt(env.FAILURE_ALERT_COOLDOWN_MINUTES, 180, 1),
     tgbHomeUrl: env.TGB_HOME_URL?.trim() || "https://www.tgb.cn/",
     tgbBbsUrl: env.TGB_BBS_URL?.trim() || "https://www.tgb.cn/bbs/",
-    finalSummaryHourLocal: toInt(env.FINAL_SUMMARY_HOUR_LOCAL, 0, 0),
-    finalSummaryMinuteLocal: toInt(env.FINAL_SUMMARY_MINUTE_LOCAL, 30, 0),
-    finalSummaryLookbackHours: toInt(env.FINAL_SUMMARY_LOOKBACK_HOURS, 24, 1),
-    marketTimezone: env.MARKET_TIMEZONE?.trim() || "Asia/Shanghai",
   };
 }

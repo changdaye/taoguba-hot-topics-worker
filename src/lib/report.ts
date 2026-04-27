@@ -97,9 +97,6 @@ export function buildFeishuMessageObjectKey(now = new Date()): string {
   return `${PROJECT_PREFIX}/feishu-messages/${buildUtcStamp(now)}.txt`;
 }
 
-export function buildFinalSummaryObjectKey(now = new Date()): string {
-  return `${PROJECT_PREFIX}/final-summaries/${buildUtcStamp(now)}.txt`;
-}
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");

@@ -1,5 +1,5 @@
 import type { BriefConfig } from "../types";
-import { buildDetailedReportObjectKey, buildFeishuMessageObjectKey, buildFinalSummaryObjectKey } from "../lib/report";
+import { buildDetailedReportObjectKey, buildFeishuMessageObjectKey } from "../lib/report";
 
 const SIGN_VALID_SECONDS = 3600;
 
@@ -11,38 +11,7 @@ export async function uploadFeishuMessageToCos(config: BriefConfig, content: str
   return uploadTextObjectToCos(config, buildFeishuMessageObjectKey(now), content, "text/plain; charset=utf-8", now);
 }
 
-export async function uploadFinalSummaryToCos(config: BriefConfig, content: string, now = new Date()): Promise<{ key: string; url: string }> {
-  return uploadTextObjectToCos(config, buildFinalSummaryObjectKey(now), content, "text/plain; charset=utf-8", now);
-}
 
-export async function listCosObjects(config: BriefConfig, prefix: string): Promise<Array<{ key: string; lastModified?: string }>> {
-  const url = new URL(`${config.cosBaseUrl.replace(/\/+$/, "")}/`);
-  url.searchParams.set("list-type", "2");
-  url.searchParams.set("prefix", prefix);
-  url.searchParams.set("max-keys", "1000");
-  const response = await signedFetch(config, "get", url, new Map(), undefined);
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`COS list HTTP ${response.status}: ${text.slice(0, 500)}`);
-  }
-  const xml = await response.text();
-  return [...xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)].map((match) => {
-    const block = match[1];
-    const key = decodeXml(block.match(/<Key>([\s\S]*?)<\/Key>/)?.[1] ?? "");
-    const lastModified = decodeXml(block.match(/<LastModified>([\s\S]*?)<\/LastModified>/)?.[1] ?? "");
-    return { key, lastModified: lastModified || undefined };
-  }).filter((item) => item.key);
-}
-
-export async function fetchCosObjectText(config: BriefConfig, key: string): Promise<string> {
-  const url = new URL(`${config.cosBaseUrl.replace(/\/+$/, "")}/${key}`);
-  const response = await signedFetch(config, "get", url, new Map(), undefined);
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`COS object HTTP ${response.status}: ${text.slice(0, 500)}`);
-  }
-  return response.text();
-}
 
 async function uploadTextObjectToCos(config: BriefConfig, key: string, content: string, contentType: string, now: Date): Promise<{ key: string; url: string }> {
   const objectUrl = `${config.cosBaseUrl.replace(/\/+$/, "")}/${key}`;
