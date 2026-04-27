@@ -1,11 +1,10 @@
 import { parseConfig } from "./config";
 import { getPostPushState, insertDigestRun, listRecentDigestRuns, markDigestRunPushed, upsertPostPushState } from "./db";
 import { authorizeAdminRequest } from "./lib/admin";
-import { buildDigestMessage, buildFailureAlertMessage, buildFallbackMessage, buildHeartbeatMessage, buildWakeSummaryMessage } from "./lib/message";
+import { buildDigestMessage, buildFailureAlertMessage, buildFallbackMessage, buildHeartbeatMessage } from "./lib/message";
 import { buildDetailedReport } from "./lib/report";
 import { buildDetailedReportPublicUrl, maybeHandleDetailedReportRequest, saveDetailedReportCopy } from "./lib/report-storage";
 import { getRuntimeState, recordFailure, recordSuccess, setRuntimeState, shouldSendFailureAlert, shouldSendHeartbeat } from "./lib/runtime";
-import { clearQuietDigest, isDigestQuietHours, noteQuietDigest } from "./lib/schedule";
 import { uploadDetailedReportToCos } from "./services/cos";
 import { pushToFeishu } from "./services/feishu";
 import { analyzeWithLLM } from "./services/llm";
@@ -16,7 +15,6 @@ async function runBrief(env: Env): Promise<{ candidateCount: number; itemCount: 
   const config = parseConfig(env);
   const state = await getRuntimeState(env.RUNTIME_KV);
   const now = new Date();
-  const quietHours = isDigestQuietHours(now);
 
   try {
     const snapshot = await fetchTaogubaSnapshot(config, now);
@@ -53,9 +51,7 @@ async function runBrief(env: Env): Promise<{ candidateCount: number; itemCount: 
     const baseMessage = aiAnalysis
       ? buildDigestMessage(analysis ?? "", postsToPush, publicReportUrl, modelLabel)
       : buildFallbackMessage(postsToPush, publicReportUrl, modelLabel);
-    const message = !quietHours && (state.quietDigestCount ?? 0) > 0
-      ? buildWakeSummaryMessage(baseMessage, state.quietDigestCount ?? 0)
-      : baseMessage;
+    const message = baseMessage;
 
     const runId = crypto.randomUUID();
     await insertDigestRun(env.BRIEF_DB, {
@@ -72,15 +68,6 @@ async function runBrief(env: Env): Promise<{ candidateCount: number; itemCount: 
     });
 
     let nextState = recordSuccess(state, now);
-    if (quietHours) {
-      nextState = noteQuietDigest(nextState, now);
-      await persistPostStates(env, postsToPush, runId, now);
-      await markDigestRunPushed(env.BRIEF_DB, runId, true);
-      await maybeSendHeartbeat(config, nextState, now);
-      await setRuntimeState(env.RUNTIME_KV, nextState);
-      return { candidateCount: snapshot.items.length, itemCount: postsToPush.length, aiAnalysis, detailedReportUrl: publicReportUrl };
-    }
-
     try {
       await pushToFeishu(config, message);
       await persistPostStates(env, postsToPush, runId, now);
@@ -91,9 +78,6 @@ async function runBrief(env: Env): Promise<{ candidateCount: number; itemCount: 
       throw error;
     }
 
-    if ((nextState.quietDigestCount ?? 0) > 0) {
-      nextState = clearQuietDigest(nextState);
-    }
     nextState = await maybeSendHeartbeat(config, nextState, now);
     await setRuntimeState(env.RUNTIME_KV, nextState);
     return { candidateCount: snapshot.items.length, itemCount: postsToPush.length, aiAnalysis, detailedReportUrl: publicReportUrl };

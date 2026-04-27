@@ -58,14 +58,6 @@ export function buildFailureAlertMessage(state: RuntimeState, threshold: number)
   ].join("\n");
 }
 
-export function buildWakeSummaryMessage(message: string, quietDigestCount: number): string {
-  return [
-    "🌅 隔夜汇总",
-    `北京时间 22:00 - 08:00 静默时段内累计更新 ${quietDigestCount} 次，以下为最新一版摘要：`,
-    "",
-    message,
-  ].join("\n");
-}
 
 export function normalizeAnalysisText(text: string): string {
   const cleaned = text
