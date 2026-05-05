@@ -10,7 +10,7 @@
     "enabled": true
   },
   "triggers": {
-    "crons": ["30 0 * * *"]
+    "crons": ["38 0,4,8,14 * * *"]
   },
   "kv_namespaces": [
     {
@@ -31,10 +31,10 @@
     }
   ],
   "vars": {
-    "DIGEST_INTERVAL_HOURS": "24",
+    "DIGEST_INTERVAL_HOURS": "12",
     "HEARTBEAT_INTERVAL_HOURS": "24",
     "REQUEST_TIMEOUT_MS": "15000",
-    "FETCH_WINDOW_HOURS": "24",
+    "FETCH_WINDOW_HOURS": "12",
     "MAX_POSTS_PER_DIGEST": "12",
     "MAX_REPLIES_PER_POST": "8",
     "LLM_MODEL": "gpt-5.4",
